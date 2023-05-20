@@ -42,7 +42,6 @@ user - 1              (тип int)
  - docker-compose exec -it db bash
  - psql -U postgres
  - \connect audio;
- - \connect audio
 
 Для доступа в SWAGGER:
  - http://0.0.0.0:8010/docs
