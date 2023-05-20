@@ -26,7 +26,8 @@ from app.models import (
 from app.schemas import (
     UserCreate,
     UserResponse,
-    SongResponse
+    SongResponse,
+    SongDB
 )
 
 logger = logging.getLogger(__name__)
@@ -49,9 +50,9 @@ async def create_user(
         db_session.add(user_db)
         db_session.commit()
         db_session.refresh(user_db)
-    except Exception:
+    except Exception as e:
         db_session.rollback()
-        return JSONResponse(content="Error with DB", status_code=400)
+        return JSONResponse(content=f"Error with DB, cause {str(e)}", status_code=400)
 
     return UserResponse(id=user_db.id, token=user_db.user_token)
 
@@ -68,39 +69,43 @@ async def upload_wav(
     if not user:
         return JSONResponse(content='User not found', status_code=404)
 
-    root_path = "/data"
-    names_of_files = os.listdir(root_path)
     name = file.filename
-
-    count = 1
     filename, file_extension = os.path.splitext(name)
 
     if file_extension != '.wav':
         return JSONResponse(content='File isn`t a wav extension', status_code=400)
+
+    root_path = "/data"
+    if os.path.exists(root_path):
+        names_of_files = os.listdir(root_path)
+    else:
+        return JSONResponse(content='Folder for converting files not found', status_code=404)
+
+    count = 1
 
     while name in names_of_files:
         name = filename + f"({count})" + file_extension
         count += 1
 
     os.umask(0)
-    async with aiofiles.open(f"/data/{name}", 'wb') as out_file:
+    async with aiofiles.open(f"{root_path}/{name}", 'wb') as out_file:
         while content := await file.read(1024):
             await out_file.write(content)
 
     try:
-        src = f"/data/{name}"
+        src = f"{root_path}/{name}"
         name_without_extension, file_extension = os.path.splitext(name)
-        dst = f"/data/{name_without_extension}.mp3"
+        dst = f"{root_path}/{name_without_extension}.mp3"
 
         sound = AudioSegment.from_mp3(src)
         sound.export(dst, format="wav")
 
         uuid_for_song = uuid.uuid4()
     except Exception as e:
-        return JSONResponse(content=str(e), status_code=400)
+        return JSONResponse(content=f"Error with converting to mp3, cause: {str(e)}", status_code=400)
 
-    if os.path.exists(f"/data/{name_without_extension}.mp3"):
-        async with aiofiles.open(f"/data/{name_without_extension}.mp3", 'rb') as out_file:
+    if os.path.exists(f"{root_path}/{name_without_extension}.mp3"):
+        async with aiofiles.open(f"{root_path}/{name_without_extension}.mp3", 'rb') as out_file:
             content = await out_file.read()
     else:
         return JSONResponse(content="Error with converting to mp3", status_code=400)
@@ -115,12 +120,12 @@ async def upload_wav(
         db_session.add(song)
         db_session.commit()
         db_session.refresh(song)
-    except Exception:
+    except Exception as e:
         db_session.rollback()
-        return JSONResponse(content="Error with DB", status_code=400)
+        return JSONResponse(content=f"Error with DB, cause {str(e)}", status_code=400)
 
-    os.remove(f"/data/{name_without_extension}.mp3")
-    os.remove(f"/data/{name}")
+    os.remove(f"{root_path}/{name_without_extension}.mp3")
+    os.remove(f"{root_path}/{name}")
 
     return SongResponse(url=f"http://0.0.0.0:8010/api/v1/record?id={uuid_for_song}&user={user_id}")
 
@@ -131,9 +136,11 @@ async def download_song(
         user: int,
         db_session: Session = Depends(get_session)
 ) -> Union[StreamingResponse, JSONResponse]:
-    song = db_session.query(Song).filter(Song.uuid_key == id, Song.user_id == user).first()
-    if not song:
+    song_from_db = db_session.query(Song).filter(Song.uuid_key == id, Song.user_id == user).first()
+    if not song_from_db:
         return JSONResponse(content='Song not found', status_code=404)
+
+    song = SongDB.from_orm(song_from_db)
 
     file_bytesio = io.BytesIO(song.song)
     response = StreamingResponse(file_bytesio, media_type="audio/mp3")

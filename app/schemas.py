@@ -19,3 +19,14 @@ class UserResponse(BaseModel):
 class SongResponse(BaseModel):
     success: bool = True
     url: HttpUrl
+
+
+class SongDB(BaseModel):
+    id: int
+    uuid_key: UUID4
+    name: str
+    song: bytes
+    user_id: int
+
+    class Config:
+        orm_mode = True
