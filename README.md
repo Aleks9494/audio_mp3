@@ -41,4 +41,4 @@ user - 1              (тип int)
 Для входа в контейнер с БД:
  - docker-compose exec -it db bash
  - psql -U postgres
- - \connect audio
+ - \connect audio;
