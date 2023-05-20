@@ -1,7 +1,10 @@
 from sqlalchemy import (
     Column,
     Integer,
-    String, LargeBinary, ForeignKey, UUID
+    String,
+    LargeBinary,
+    ForeignKey,
+    UUID
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship

@@ -1,6 +1,9 @@
-import datetime
-from typing import List
-from pydantic import BaseModel, UUID4, HttpUrl, Field
+from pydantic import (
+    BaseModel,
+    UUID4,
+    HttpUrl,
+    Field
+)
 
 
 class UserCreate(BaseModel):

@@ -1,6 +1,8 @@
 import io
 import logging
 import os.path
+import aiofiles
+import uuid
 from typing import Union
 from pydantic import UUID4
 from pydub import AudioSegment
@@ -11,20 +13,28 @@ from fastapi import (
     Form,
     Depends
 )
-import aiofiles
-from fastapi.responses import StreamingResponse, JSONResponse
-import uuid
+from fastapi.responses import (
+    StreamingResponse,
+    JSONResponse
+)
 from sqlalchemy.orm import Session
 from app.base import get_session
-from app.models import User, Song
-from app.schemas import UserCreate, UserResponse, SongResponse
+from app.models import (
+    User,
+    Song
+)
+from app.schemas import (
+    UserCreate,
+    UserResponse,
+    SongResponse
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix='/api/v1')
 
 
-@router.post("/create_user", response_model=UserResponse)
+@router.post("/create_user", response_model=UserResponse, status_code=201)
 async def create_user(
         user: UserCreate,
         db_session: Session = Depends(get_session)
